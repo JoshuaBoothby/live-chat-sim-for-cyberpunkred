@@ -1,12 +1,6 @@
 const { ChromaClient } = require("chromadb");
 const { pipeline } = require("@xenova/transformers");
 const fs = require("fs");
-
-// ...existing code...
-// This script ingests lore into ChromaDB 0.4.x via HTTP API
-// Usage: node lore_ingest.js <lore_file.txt>
-
-const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
 
