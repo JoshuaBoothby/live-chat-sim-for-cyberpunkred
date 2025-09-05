@@ -2,24 +2,18 @@ import React from "react";
 
 export default function ChatWindow({ messages, loading }) {
   return (
-    <div
-      style={{
-        height: 400,
-        overflowY: "auto",
-        border: "1px solid #333",
-        padding: 10,
-      }}
-    >
+    <div className="chat-window">
       {messages.map((msg, i) => (
         <div
           key={i}
+          className="chat-message"
           style={{ textAlign: msg.sender === "You" ? "right" : "left" }}
         >
-          <b>{msg.sender}:</b> {msg.text}
+          <span className="username">{msg.sender}:</span> {msg.text}
         </div>
       ))}
       {loading && (
-        <div>
+        <div className="chat-message">
           <i>Edgerunner is typing...</i>
         </div>
       )}
