@@ -26,19 +26,27 @@ async function createCollection() {
 
 async function addDocuments(docs) {
   try {
+    // ChromaDB 0.4.x expects /add endpoint and specific payload
+    const ids = docs.map((entry) =>
+      entry.id ? `lore-${entry.id}` : undefined
+    );
+    const documents = docs.map((entry) => entry.text);
+    const metadatas = docs.map((entry) => ({ source: "lore.json" }));
     await axios.post(
-      `${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}/documents`,
+      `${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}/add`,
       {
-        documents: docs.map((entry) => ({
-          id: entry.id ? `lore-${entry.id}` : undefined,
-          text: entry.text,
-          metadata: { source: "lore.json" },
-        })),
+        ids,
+        documents,
+        metadatas,
       }
     );
     console.log("Documents added to ChromaDB.");
   } catch (err) {
-    console.error("Error adding documents:", err.message);
+    if (err.response) {
+      console.error("Error adding documents:", err.response.data);
+    } else {
+      console.error("Error adding documents:", err.message);
+    }
     process.exit(1);
   }
 }
