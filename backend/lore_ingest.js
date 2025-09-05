@@ -32,15 +32,13 @@ async function createCollection() {
 
 async function addDocuments(docs) {
   try {
-    // ChromaDB 0.4.x expects embeddings, so you must provide them or let the server handle it if configured
-    // Here we send only text, assuming server-side embedding
     await axios.post(
       `${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}/documents`,
       {
-        documents: docs.map((text, i) => ({
-          id: `lore-${i}`,
-          text,
-          metadata: { source: "lore_file" },
+        documents: docs.map((entry) => ({
+          id: entry.id ? `lore-${entry.id}` : undefined,
+          text: entry.text,
+          metadata: { source: "lore.json" },
         })),
       }
     );
@@ -52,21 +50,27 @@ async function addDocuments(docs) {
 }
 
 async function main() {
-  const loreFile = process.argv[2];
-  if (!loreFile) {
-    console.error("Usage: node lore_ingest.js <lore_file.txt>");
+  // Always use lore.json in the same directory
+  const lorePath = path.resolve(__dirname, "lore.json");
+  if (!fs.existsSync(lorePath)) {
+    console.error("lore.json not found in backend directory.");
     process.exit(1);
   }
-  const lorePath = path.resolve(loreFile);
-  const loreText = fs.readFileSync(lorePath, "utf-8");
-  // Split lore into paragraphs or lines for chunking
-  const loreChunks = loreText
-    .split(/\n\n|\n/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const loreRaw = fs.readFileSync(lorePath, "utf-8");
+  let loreEntries;
+  try {
+    loreEntries = JSON.parse(loreRaw);
+  } catch (e) {
+    console.error("Error parsing lore.json:", e.message);
+    process.exit(1);
+  }
+  if (!Array.isArray(loreEntries)) {
+    console.error("lore.json must be an array of objects with id and text.");
+    process.exit(1);
+  }
 
   await createCollection();
-  await addDocuments(loreChunks);
+  await addDocuments(loreEntries);
 }
 
 main();
