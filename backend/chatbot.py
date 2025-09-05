@@ -39,11 +39,17 @@ async def chat_endpoint(req: ChatRequest):
     # Combine user input with lore for context
     prompt = f"{lore_text}\n\nUser: {req.message}\nAI:"
     inputs = tokenizer(prompt, return_tensors="pt")
-    outputs = model.generate(
-        **inputs,
-        max_new_tokens=50,
-        do_sample=True,
-        temperature=0.7
+    # Run model.generate in a thread to avoid blocking the event loop
+    import asyncio
+    loop = asyncio.get_event_loop()
+    outputs = await loop.run_in_executor(
+        None,
+        lambda: model.generate(
+            **inputs,
+            max_new_tokens=50,
+            do_sample=True,
+            temperature=0.7
+        )
     )
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     # Remove the prompt echo
