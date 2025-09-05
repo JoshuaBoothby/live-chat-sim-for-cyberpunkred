@@ -16,8 +16,7 @@ print("⏳ Loading Phi-3 Mini (8-bit)...")
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
-    device_map="auto",
-    load_in_8bit=True
+    device_map="auto"
 )
 print("✅ Phi-3 Mini loaded.")
 
