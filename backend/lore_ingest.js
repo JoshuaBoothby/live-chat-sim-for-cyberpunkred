@@ -1,55 +1,9 @@
 const { ChromaClient } = require("chromadb");
-const { pipeline } = require("@xenova/transformers");
 const fs = require("fs");
 const path = require("path");
-const axios = require("axios");
 
-const CHROMA_URL = process.env.CHROMA_URL || "http://localhost:8000";
+const CHROMA_URL = process.env.CHROMA_URL || "http://localhost:8001";
 const COLLECTION_NAME = "cyberpunk_lore";
-
-async function createCollection() {
-  try {
-    await axios.post(`${CHROMA_URL}/api/v1/collections`, {
-      name: COLLECTION_NAME,
-      metadata: { description: "Cyberpunk RED lore" },
-    });
-    console.log("Collection created or already exists.");
-  } catch (err) {
-    if (err.response && err.response.status === 409) {
-      console.log("Collection already exists.");
-    } else {
-      console.error("Error creating collection:", err.message);
-      process.exit(1);
-    }
-  }
-}
-
-async function addDocuments(docs) {
-  try {
-    // ChromaDB 0.4.x expects /add endpoint and specific payload
-    const ids = docs.map((entry) =>
-      entry.id ? `lore-${entry.id}` : undefined
-    );
-    const documents = docs.map((entry) => entry.text);
-    const metadatas = docs.map((entry) => ({ source: "lore.json" }));
-    await axios.post(
-      `${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}/add`,
-      {
-        ids,
-        documents,
-        metadatas,
-      }
-    );
-    console.log("Documents added to ChromaDB.");
-  } catch (err) {
-    if (err.response) {
-      console.error("Error adding documents:", err.response.data);
-    } else {
-      console.error("Error adding documents:", err.message);
-    }
-    process.exit(1);
-  }
-}
 
 async function main() {
   // Always use lore.json in the same directory
@@ -71,8 +25,20 @@ async function main() {
     process.exit(1);
   }
 
-  await createCollection();
-  await addDocuments(loreEntries);
+  // Connect to ChromaDB and get or create collection
+  const chroma = new ChromaClient({ path: CHROMA_URL });
+  const collection = await chroma.getOrCreateCollection({
+    name: COLLECTION_NAME,
+  });
+
+  // Prepare data
+  const documents = loreEntries.map((entry) => entry.text);
+  const ids = loreEntries.map((entry) => entry.id);
+  const metadatas = loreEntries.map((entry) => ({ source: "lore.json" }));
+
+  // Ingest
+  await collection.add({ documents, ids, metadatas });
+  console.log(`Ingested ${documents.length} lore entries to ChromaDB.`);
 }
 
-main();
+main().catch(console.error);

@@ -41,7 +41,9 @@ function App() {
     setInput("");
     setLoading(true);
 
-    const res = await fetch("http://localhost:5000/api/chat", {
+    const backendUrl =
+      import.meta.env.VITE_BACKEND_URL || "http://localhost:8000/api/chat";
+    const res = await fetch(backendUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -69,7 +71,9 @@ function App() {
       `\nStream Event: ${event}\nChat response:`;
 
     setLoading(true);
-    const res = await fetch("http://localhost:5000/api/chat", {
+    const backendUrl =
+      import.meta.env.VITE_BACKEND_URL || "http://localhost:8000/api/chat";
+    const res = await fetch(backendUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: finalPrompt, history: [] }),

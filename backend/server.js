@@ -11,7 +11,11 @@ app.use(bodyParser.json());
 
 // Helper to get relevant lore from ChromaDB
 async function getRelevantLore(query, n_results = 2) {
-  const chroma = new ChromaClient();
+  const chroma = new ChromaClient({
+    host: "localhost",
+    port: 8001,
+    ssl: false,
+  });
   const embedder = await pipeline(
     "feature-extraction",
     "Xenova/all-MiniLM-L6-v2"
