@@ -12,12 +12,36 @@ import json
 import asyncio
 import aiohttp
 import random
-from fastapi import FastAPI, HTTPException
+import time
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Optional
-import time
 from functools import lru_cache
+
+# Simple request tracking for throttling
+request_tracker = {}
+MAX_REQUESTS_PER_MINUTE = 15  # Slightly higher for optimized version
+
+def check_rate_limit(client_ip: str) -> bool:
+    """Simple rate limiting: max 15 requests per minute per IP"""
+    current_time = time.time()
+    if client_ip not in request_tracker:
+        request_tracker[client_ip] = []
+    
+    # Clean old requests (older than 1 minute)
+    request_tracker[client_ip] = [
+        req_time for req_time in request_tracker[client_ip] 
+        if current_time - req_time < 60
+    ]
+    
+    # Check if under limit
+    if len(request_tracker[client_ip]) >= MAX_REQUESTS_PER_MINUTE:
+        return False
+    
+    # Add current request
+    request_tracker[client_ip].append(current_time)
+    return True
 
 # Load lore database
 current_dir = os.path.dirname(__file__)
@@ -132,7 +156,7 @@ Response:"""
 async def call_llm_api(prompt: str) -> str:
     """Call external LLM API with timeout and error handling"""
     try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:  # Reduced from 15 to 10
             payload = {
                 "model": LLM_MODEL,
                 "messages": [
@@ -142,7 +166,7 @@ async def call_llm_api(prompt: str) -> str:
                 "stream": False,
                 "options": {
                     "temperature": 0.8,
-                    "num_predict": 150
+                    "num_predict": 80  # Reduced from 150 to 80 for faster response
                 }
             }
             
@@ -162,7 +186,13 @@ async def ping():
     return {"status": "ok", "timestamp": time.time()}
 
 @app.post("/api/chat")
-async def chat_endpoint(req: ChatRequest):
+async def chat_endpoint(req: ChatRequest, request: Request):
+    # Rate limiting check
+    client_ip = request.client.host
+    if not check_rate_limit(client_ip):
+        print(f"[RATE_LIMIT] Too many requests from {client_ip}")
+        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment.")
+        
     try:
         start_time = time.time()
         print(f"[DEBUG] Received message: {req.message}")
